@@ -112,3 +112,30 @@ class TestVoid(unittest.TestCase):
         s.shadow(f)
         self.assertEqual(len(s.gaps), 1)
         self.assertEqual(SegmentApproxMatcher(s.gaps[0]), Segment(0.0, 1.0))
+
+    def test_center_point(self):
+        s = Edge(R3(0.0, 0.0, 0.0), R3(0.0, 0.0, -1.0))
+        self.assertEqual(s.center_point(), R3ApproxMatcher(R3(0.0, 0.0, -0.5)))
+
+    def test_FEL(self):
+        s = Edge(R3(0.0, 0.0, 0.0), R3(0.0, 0.0, 5.0))
+        self.assertEqual(s.FEL(), 5.0)
+
+    def test_FEL1(self):
+        s = Edge(R3(0.0, 0.0, 0.0), R3(0.0, 0.0, 1.0))
+        self.assertEqual(s.FEL(), 0.0)
+
+    def test_v_facset(self):
+        s = Edge(R3(0.0, 0.0, 0.0), R3(1.0, 1.0, 0.0))
+        f = Facet([R3(0.0, 0.0, 0.0), R3(0.0, 0.0, 1.0),
+                   R3(0.0, 1.0, 1.0), R3(0.0, 1.0, 0.0)])
+        s.shadow(f)
+        self.assertEqual(len(s.gaps), 1)
+        self.assertEqual(s.FEL(), 1.4142135623730951)
+
+    def test_full_shadow(self):
+        s = Edge(R3(0.0, 0.0, -1.0), R3(1.0, 1.0, -1.0))
+        f = Facet([R3(0.0, 0.0, 0.0), R3(2.0, 0.0, 0.0),
+                   R3(2.0, 2.0, 0.0), R3(0.0, 2.0, 0.0)])
+        s.shadow(f)
+        self.assertEqual(s.FEL(), 0.0)
