@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, sqrt
 from functools import reduce
 from operator import add
 from common.r3 import R3
@@ -47,23 +47,27 @@ class Edge:
     def shadow(self, facet):
         # «Вертикальная» грань не затеняет ничего
         if facet.is_vertical():
-            return
+            #self.full.append(self)
+            return 1
         # Нахождение одномерной тени на ребре
         shade = Segment(Edge.SBEG, Edge.SFIN)
         for u, v in zip(facet.vertexes, facet.v_normals()):
             shade.intersect(self.intersect_edge_with_normal(u, v))
             if shade.is_degenerate():
-                return
+                #self.full.append(self)
+                return 1
 
         shade.intersect(
             self.intersect_edge_with_normal(
                 facet.vertexes[0], facet.h_normal()))
         if shade.is_degenerate():
-            return
+            #self.full.append(self)
+            return 1
         # Преобразование списка «просветов», если тень невырождена
         gaps = [s.subtraction(shade) for s in self.gaps]
         self.gaps = [
             s for s in reduce(add, gaps, []) if not s.is_degenerate()]
+        return 0
 
     # Преобразование одномерных координат в трёхмерные
     def r3(self, t):
@@ -79,6 +83,22 @@ class Edge:
             return Segment(Edge.SBEG, Edge.SFIN)
         x = - f0 / (f1 - f0)
         return Segment(Edge.SBEG, x) if f0 < 0.0 else Segment(x, Edge.SFIN)
+    
+    # вычисляет центр ребра
+    def center_point(self):
+        a, b= self.beg, self.fin
+        return R3((a.x + b.x)/2, (a.y + b.y)/2, (a.z + b.z)/2)
+    
+    # вычисляет длину проекции полностью видимого ребра
+    # если его центр лежит вне единичного куба
+    def FEL(self, k):
+        c = self.center_point()
+        if abs(c.x) <= k and abs(c.y) <= k and abs(c.z) <= k:
+            return 0.0
+        else:
+            vector = self.fin - self.beg
+            a, b= self.beg, self.fin
+            return sqrt(vector.dot(vector))
 
 
 class Facet:
@@ -127,6 +147,7 @@ class Polyedr:
 
         # списки вершин, рёбер и граней полиэдра
         self.vertexes, self.edges, self.facets = [], [], []
+        self.full = set()
 
         # список строк файла
         with open(file) as f:
@@ -136,6 +157,7 @@ class Polyedr:
                     buf = line.split()
                     # коэффициент гомотетии
                     c = float(buf.pop(0))
+                    self.k = c
                     # углы Эйлера, определяющие вращение
                     alpha, beta, gamma = (float(x) * pi / 180.0 for x in buf)
                 elif i == 1:
@@ -163,7 +185,17 @@ class Polyedr:
     def draw(self, tk):  # pragma: no cover
         tk.clean()
         for e in self.edges:
+            flag = 1
             for f in self.facets:
-                e.shadow(f)
+                flag *= e.shadow(f)
+            if flag == 1:
+                self.full.add(e)
             for s in e.gaps:
                 tk.draw_line(e.r3(s.beg), e.r3(s.fin))
+
+    def full_len(self):
+        summ = 0.0
+        for e in self.full:
+            summ += e.FEL(self.k)
+        return summ
+
